@@ -1,8 +1,8 @@
 function test()
 close all; clear all;
 % first, import two images
-image1 = imread('./Baby/5.jpg');
-image2 = imread('./Baby/6.jpg');
+image1 = imread('5.jpg');
+image2 = imread('6.jpg');
 
 % second, compute pyramids for both the two images, group all layers of
 % each pyramid into a cell called pyramid
@@ -50,41 +50,41 @@ for level = 2:layerNum
     num = rows * cols;
     
     R = []; %zeros(num * 9, 1);
-    D = zeros(num, num * 9);
+    D = zeros(num * 4, num * 9);
     for r = 1 : rows
         for c = 1 : cols
             homography = homographyLevel(r,c).homographies;
             R = [R; homography(:)];
             cur_ind = (r - 1) * cols + c;
-            count = 0;
-            if r - 1 >= 1
-                ind = (r - 2) * cols + c;
-                D(cur_ind, (ind - 1) * 9 + 1: ind * 9) = -1;
-                count = count + 1;
-            end
-            if r + 1 <= rows
-                ind = r * cols + c;
-                D(cur_ind, (ind - 1) * 9 + 1: ind * 9) = -1;
-                count = count + 1;
-            end
-            if c - 1 >= 1
-                ind = (r - 1) * cols + c - 1;
-                D(cur_ind, (ind - 1) * 9 + 1: ind * 9) = -1;
-                count = count + 1;
-            end
-            if c + 1 <= cols
-                ind = (r - 1) * cols + c + 1;
-                D(cur_ind, (ind - 1) * 9 + 1: ind * 9) = -1;
-                count = count + 1;
-            end
-            D(cur_ind, (cur_ind - 1) * 9 + 1: cur_ind * 9) = count;
-        end
-    end
+            % determine neighbors
+            cur_r = r;
+            cur_c = c;
+            for neighbor = 1 : 4
+                count = 0;
+                switch neighbor
+                    case 1
+                        cur_r = r - 1; cur_c = c;
+                    case 2
+                        cur_r = r + 1; cur_c = c;
+                    case 3
+                        cur_r = r; cur_c = c - 1;
+                    case 4
+                        cur_r = r; cur_c = c + 1;
+                end
+                if cur_r <= rows && cur_r >= 1 && cur_c <= cols && cur_c >= 1
+                    ind = (cur_r - 1) * cols + cur_c;
+                    D((cur_ind - 1) * 4 + neighbor, (ind - 1) * 9 + 1 : ind * 9) = -1;
+                    count = 1;
+                end
+                D((cur_ind - 1) * 4 + neighbor, (cur_ind - 1) * 9 + 1: cur_ind * 9) = count;
+            end % loop of neighbors
+        end % loop of cols
+    end % loop of rows
     
     A = eye(num * 9, num * 9) + lambda * (D' * D);
     b = 2 * R;
     
-    H = A^(-1) * b;
+    H = inv(A) * b;
     for r = 1 : rows
         for c = 1 : cols
             ind = (r - 1) * cols + c;
