@@ -250,7 +250,7 @@ for level = 1:layerNum
     for r = 1:rows
         for c = 1:cols
             [tform,inlierPts1,inlierPts2] = estimateGeometricTransform(nodes1{r,c}.pts, nodes2{r,c}.pts, 'projective');
-            if length(inlierPts1) < 40 && level > 1% minimum number of points
+            if length(inlierPts1) < 8 && level > 1% minimum number of points
                 r_upper = ceil(r / 2);
                 c_upper = ceil(c / 2);
                 temp = homographyPyramid{level - 1};
