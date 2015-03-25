@@ -87,12 +87,12 @@ for level = 2:layerNum
                         D(row_to_fill + shift, col_to_fill + shift) = count;
                     end
                 end
-            end % loop of neighbors
+            end % loop of neighborsrows
         end % loop of cols
     end % loop of rows
     
-    A = eye(num * 9, num * 9) + lambda * (D' * D);
-    b = 2 * R;
+    A = eye(num * 9, num * 9) + lambda / 2 * (D' * D);
+    b = R;
     
     H = inv(A) * b;
     for r = 1 : rows
@@ -104,8 +104,8 @@ for level = 2:layerNum
 end
 
 % fifth, discretize homography to create homography flow
-homographyFLow = discretizeHomography(tform.T, size(baseImage1, 1), size(baseImage2, 2));
-
+% homographyFLow = discretizeHomography(tform.T, [1 size(baseImage1, 1)], [1 size(baseImage2, 2)]);
+homographyFlow = discretizeAndGroupImageHomography(homographyPyramid{2}, 2, 2, size(image1, 1), size(image1, 2));
 end
 
 %%
@@ -129,6 +129,29 @@ end
 
 end
 
+function homographyFlow = discretizeAndGroupImageHomography(homographySet, nodeRows, nodeCols, imageRows, imageCols)
+homographyFlow = zeros(imageRows, imageCols, 2);
+rowsPerNode = imageRows / nodeRows;
+colsPerNode = imageCols / nodeCols;
+for r = 1 : nodeRows
+    for c = 1 : nodeCols
+        homography = homographySet(r, c).homographies;
+        rStart = (r - 1) * rowsPerNode + 1;
+        rEnd = r * rowsPerNode;
+        if r == nodeRows
+            rEnd = imageRows;
+        end
+        cStart = (c - 1) * colsPerNode + 1;
+        cEnd = c * colsPerNode;
+        if c == nodeCols
+            cEnd = imageCols;
+        end
+        nodeHomographyFLow = discretizeHomography(homography, [rStart rEnd], [cStart cEnd]);
+        homographyFlow(rStart : rEnd, cStart : cEnd, :) = nodeHomographyFLow(rStart : rEnd, cStart : cEnd, :);
+    end
+end
+end
+
 function homographyFLow = discretizeHomography(homography, rows, cols)
 % The matrix T uses the convention:
 % [x y 1] = [u v 1] * T
@@ -136,9 +159,9 @@ function homographyFLow = discretizeHomography(homography, rows, cols)
 % [a b c;...
 %  d e f;...
 %  g h i];
-homographyFLow = zeros(rows, cols, 2);
-for x = 1 : cols
-    for y = 1 : rows
+homographyFLow = zeros(rows(2) - rows(1) + 1, cols(2) - cols(1) + 1, 2);
+for x = cols(1) : cols(2)
+    for y = rows(1) : rows(2)
         pt = [x, y, 1];
         pt_ = pt * homography;
         pt_ = pt_ / pt_(3);
