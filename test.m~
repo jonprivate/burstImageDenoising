@@ -50,7 +50,7 @@ for level = 2:layerNum
     num = rows * cols;
     
     R = []; %zeros(num * 9, 1);
-    D = zeros(num * 4 * 9, num * 9);
+    D = zeros(num * 4, num * 9);
     for r = 1 : rows
         for c = 1 : cols
             homography = homographyLevel(r,c).homographies;
@@ -73,20 +73,10 @@ for level = 2:layerNum
                 end
                 if cur_r <= rows && cur_r >= 1 && cur_c <= cols && cur_c >= 1
                     ind = (cur_r - 1) * cols + cur_c;
-                    row_to_fill = (cur_ind - 1) * 4 * 9 + (neighbor - 1) * 9;
-                    col_to_fill = (ind - 1) * 9;
-                    for shift = 1 : 9
-                        D(row_to_fill + shift, col_to_fill + shift) = -1;
-                    end
+                    D((cur_ind - 1) * 4 + neighbor, (ind - 1) * 9 + 1 : ind * 9) = -1;
                     count = 1;
                 end
-                if count == 1
-                    row_to_fill = (cur_ind - 1) * 4 * 9 + (neighbor - 1) * 9;
-                    col_to_fill = (cur_ind - 1) * 9;
-                    for shift = 1 : 9
-                        D(row_to_fill + shift, col_to_fill + shift) = count;
-                    end
-                end
+                D((cur_ind - 1) * 4 + neighbor, (cur_ind - 1) * 9 + 1: cur_ind * 9) = count;
             end % loop of neighbors
         end % loop of cols
     end % loop of rows
@@ -242,6 +232,3 @@ for level = 1:layerNum
     homographyPyramid(level) = {current};
 end
 end
-
-
-
