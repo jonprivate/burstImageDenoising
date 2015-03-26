@@ -54,6 +54,11 @@ for level = 2:layerNum
     for r = 1 : rows
         for c = 1 : cols
             homography = homographyLevel(r,c).homographies;
+            pointNumber = homographyLevel(r,c).pointNumber;
+            if pointNumber < 8 && level > 1
+                upperLevel = homographyPyramid{level - 1};
+                homography = upperLevel(ceil(r / 2), ceil(c / 2)).homographies;
+            end
             R = [R; homography(:)];
             cur_ind = (r - 1) * cols + c;
             % determine neighbors
