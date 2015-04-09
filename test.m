@@ -100,6 +100,6 @@ for r = 1 : rows
     end
 end
 
-for i = 1 : size(consistentPixelNumMap,3)
-    consistentPixelNumMap(:, :, i) = bwmorph(consistentPixelNumMap(:, :, i), 'majority');
+for i = 1 : size(baseConsistentPixelMap,3)
+    baseConsistentPixelMap(:, :, i) = bwmorph(baseConsistentPixelMap(:, :, i), 'majority');
 end
