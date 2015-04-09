@@ -33,7 +33,8 @@ for i = 1 : length(imageSet)
     baseGrayScaleImageSet(:, :, i) = rgb2gray(baseImageSet{i});
 end
 % compute median image of all base images (for median value based consistent pixel selection)
-baseMedianImage = median(baseGrayScaleImageSet, 3); % get median image
+baseConsistentImageSet = getConsistentImageSet(baseGrayScaleImageSet, baseHomographySet);
+baseMedianImage = median(baseConsistentImageSet, 3);
 baseIntegralMedImage = integralImage(baseMedianImage); % integral image of the median image
 % integral images of all base images
 baseIntegralImageSet = zeros(size(refPyramid{1}, 1) + 1, size(refPyramid{1}, 2) + 1, length(imageSet));
@@ -41,8 +42,8 @@ for i = 1 : length(imageSet)
     baseIntegralImageSet(:, :, i) = integralImage(baseGrayScaleImageSet(:, :, i));
 end
 % set of consistent pixel indexes: reference based and median based
-baseRefConsistentPixelMap = zeros(size(baseImageSet{1}, 1), size(baseImageSet{1}, 2), length(baseImageSet));
-baseMedConsistentPixelMap = zeros(size(baseImageSet{1}, 1), size(baseImageSet{1}, 2), length(baseImageSet));
+baseRefConsistentPixelMap = zeros(size(baseImageSet{1}, 1), size(baseImageSet{1}, 2), length(baseImageSet), 2);
+baseMedConsistentPixelMap = zeros(size(baseImageSet{1}, 1), size(baseImageSet{1}, 2), length(baseImageSet), 2);
 tau = 10; % threshold for selecting consistent pixels
 halfWidth = 2; halfHeight = 2;
 rows = size(baseRefConsistentPixelMap, 1);
@@ -54,11 +55,15 @@ for r = 1 : rows
         sC = max(1, c - halfWidth);
         eR = min(rows, r + halfHeight);
         eC = min(cols, c + halfWidth);
+        pixNum = (eR - sR + 1) * (eC - sC + 1);
         refPix = baseIntegralImageSet(eR+1,eC+1,ref) - baseIntegralImageSet(eR+1,sC,ref) - baseIntegralImageSet(sR,eC+1,ref) + baseIntegralImageSet(sR,sC,ref);
+        refPix = refPix / pixNum;
         medPix = baseIntegralMedImage(eR+1,eC+1) - baseIntegralMedImage(eR+1,sC) - baseIntegralMedImage(sR,eC+1) + baseIntegralMedImage(sR,sC);
+        medPix = medPix / pixNum;
         for i = 1 : length(imageSet)
             if i == ref
-                baseRefConsistentPixelMap(r,c,i) = 1;
+                baseRefConsistentPixelMap(r,c,i,1) = r;
+                baseRefConsistentPixelMap(r,c,i,2) = c;
                 continue;
             end
             % get positions according to homography flow
@@ -71,12 +76,16 @@ for r = 1 : rows
             sC = max(1, ci - halfWidth);
             eR = min(rows, ri + halfHeight);
             eC = min(cols, ci + halfWidth);
+            pixNum = (eR - sR + 1) * (eC - sC + 1);
             iPix = baseIntegralImageSet(eR+1,eC+1,ref) - baseIntegralImageSet(eR+1,sC,ref) - baseIntegralImageSet(sR,eC+1,ref) + baseIntegralImageSet(sR,sC,ref);
+            iPix = iPix / pixNum;
             if abs(refPix - iPix) < tau
-                baseRefConsistentPixelMap(r,c,i) = 1;
+                baseRefConsistentPixelMap(r,c,1,i) = ri;
+                baseRefConsistentPixelMap(r,c,2,i) = ci;
             end
             if abs(medPix - iPix) < tau
-                baseMedConsistentPixelMap(r,c,i) = 1;
+                baseMedConsistentPixelMap(r,c,i,1) = ri;
+                baseMedConsistentPixelMap(r,c,i,2) = ci;
             end
         end
     end
@@ -85,7 +94,7 @@ end
 % combine median consistent pixels and reference consistent pixels
 baseConsistentPixelMap = zeros(size(baseRefConsistentPixelMap));
 reliableNumber = floor(imageNum / 2);
-consistentPixelNumMap = sum(baseMedConsistentPixelMap, 3);
+consistentPixelNumMap = sum(baseMedConsistentPixelMap(:,:,:,1) > 0, 3);
 consistentPixelNumMap = consistentPixelNumMap > reliableNumber;
 % perform majority filter
 consistentPixelNumMap = bwmorph(consistentPixelNumMap, 'majority');
