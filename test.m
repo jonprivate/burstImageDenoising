@@ -160,6 +160,24 @@ for level = 1 : length(refPyramid)
     end
     levelMeanImage = mean(levelImageSet, 4);
     % use consistent image to compute mean value and variance
+    levelGrayScaleImageSet = zeros(size(levelImageSet,1), size(levelImageSet,2), size(levelImageSet,4));
+    for i = 1 : length(imageSet)
+        levelGrayScaleImageSet(:,:,i) = rgb2gray(levelImageSet(:,:,:,i));
+    end
+    % get level homography set
+    %%%%%%%%%%%%%%%%%%%%%%%%%%
+    levelConsistentImageSet = getConsistentImageSet(levelGrayScaleImageSet, levelHomographySet);
+    levelConsistentPixelMap = levelConsistentPixelMapR > 0;
+    levelConsistentImageSet = levelConsistentImageSet .* levelConsistentPixelMap;
+    meanImage = mean(levelConsistentImageSet, 3);
+    sigmac2Map = sum((levelConsistentImageSet - repmat(meanImage, [1 1 size(levelConsistentImageSet, 3)])) .^ 2, 3) ./ sum(levelConsistentPixelMap, 3) - sigma2;
+    sigmac2Map = (sigmac2Map > 0) * sigmac2Map;
+    sigmac2Map = sigmac2Map ./ (sigmac2Map + sigma2);
+    sigmac2Map = repmat(sigmac2Map, [1 1 3]);
+    levelConsistentPixelMap = reshape(size(levelConsistentPixelMap,1), size(levelConsistentPixelMap,2), 1, size(levelConsistentPixelMap,3));
+    levelConsistentPixelMap = repmat(levelConsistentPixelMap, [1,1,3,1]);
+    meanImage = sum(levelImageSet .* levelConsistentPixelMap, 4) ./ sum(levelConsistentPixelMap, 4);
+    refPyramid{level} = meanImage + sigmac2Map .* (refPyramid{level} - meanImage);
 end
 
 % compute sigma for the finest level reference image
@@ -173,3 +191,43 @@ for i = 1 : 4
     differenceImage = cat(3, differenceImage, abs(conv2(fineGrayScaleRefImage, h, 'same')));
 end
 differenceImage = max(differenceImage, [], 3);
+differenceImage = 1 ./ (1 + exp(-5 * differenceImage / (sqrt(sigma2) - 3)));
+for level = 2 : length(refPyramid)
+    levelSpatiallyFilteredImage = refPyramid{level};
+    [rows, cols, ~] = size(levelSpatiallyFilteredImage);
+    halfWidth = 2; halfHeight = 2;
+    levelGrayScaleImage = rgb2gray(levelSpatiallyFilteredImage);
+    levelGrayScaleGradientImageSet = zeros(rows, cols, 2);
+    hy = [-1 -2 -1; 0 0 0; 1 2 1];
+    hx = [-1 0 1; -2 0 2; -1 0 1];
+    levelGrayScaleGradientImageSet(:,:,1) = conv2(levelGrayScaleImage, hx); % vertical
+    levelGrayScaleGradientImageSet(:,:,2) = conv2(levelGrayScaleImage, hy); % horizontal
+    levelGrayScaleGradientImageSet = abs(atan2(levelGrayScaleGradientImageSet(:,:,2), levelGrayScaleGradientImageSet(:,:,1)));
+    levelGrayScaleGradientImageSet = levelGrayScaleGradientImageSet / pi * 180;
+    for r = 1 + halfHeight : rows - halfHeight
+        for c = 1 + halfWidth : cols - halfWidth
+            if levelGrayScaleGradientImageSet(r,c) >= 0 && levelGrayScaleGradientImageSet(r,c) < 22.5
+                % vertical
+                levelSpatiallyFilteredImage(r,c,:) = (levelSpatiallyFilteredImage(r-2,c,:) + levelSpatiallyFilteredImage(r-1,c,:)...
+                    + levelSpatiallyFilteredImage(r,c,:) + levelSpatiallyFilteredImage(r+1,c,:) + levelSpatiallyFilteredImage(r+2,c,:)) / 5;
+            end
+            if levelGrayScaleGradientImageSet(r,c) >= 22.5 && levelGrayScaleGradientImageSet(r,c) <= 67.5
+                % main diagonal
+                levelSpatiallyFilteredImage(r,c,:) = (levelSpatiallyFilteredImage(r-2,c-2,:) + levelSpatiallyFilteredImage(r-1,c-1,:)...
+                    + levelSpatiallyFilteredImage(r,c,:) + levelSpatiallyFilteredImage(r+1,c+1,:) + levelSpatiallyFilteredImage(r+2,c+2,:)) / 5;
+            end
+            if levelGrayScaleGradientImageSet(r,c) > 67.5 && levelGrayScaleGradientImageSet(r,c) <= 112.5
+                % horizontal
+                levelSpatiallyFilteredImage(r,c,:) = (levelSpatiallyFilteredImage(r,c-2,:) + levelSpatiallyFilteredImage(r,c-1,:)...
+                    + levelSpatiallyFilteredImage(r,c,:) + levelSpatiallyFilteredImage(r,c+1,:) + levelSpatiallyFilteredImage(r,c+2,:)) / 5;
+            end
+            if levelGrayScaleGradientImageSet(r,c) >= 0 && levelGrayScaleGradientImageSet(r,c) < 22.5
+                % second diagonal
+                levelSpatiallyFilteredImage(r,c,:) = (levelSpatiallyFilteredImage(r-2,c+2,:) + levelSpatiallyFilteredImage(r-1,c+1,:)...
+                    + levelSpatiallyFilteredImage(r,c,:) + levelSpatiallyFilteredImage(r+1,c-1,:) + levelSpatiallyFilteredImage(r+2,c-2,:)) / 5;
+            end
+        end
+    end
+    refPyramid{level} = differenceImage .* levelSpatiallyFilteredImage...
+        + (1 - differenceImage) .* imresize(refPyramid{level - 1}, [size(refPyramid{level},1), size(refPyramid{level},2)], 'bilinear');
+end
