@@ -297,8 +297,7 @@ for level = 2 : length(refPyramid)
             meanVal = mean(spatialConsistentPixels, 4);
             spatialConsistentPixels = sqrt(mean(spatialConsistentPixels.^2, 3));
             spatialConsistentPixels = spatialConsistentPixels(:);
-            meanVal = sqrt(mean(meanVal.^2, 3));
-            sigmat2 = mean((spatialConsistentPixels - meanVal).^2);
+            sigmat2 = mean((spatialConsistentPixels - sqrt(mean(meanVal.^2, 3))).^2);
             sigmac2 = max(0, sigmat2 - sigma2);
             levelSpatiallyFilteredImage(r,c,:) = meanVal + sigmac2 / (sigmac2 + sigma2) * (levelSpatiallyFilteredImage(r,c,:) - meanVal);
         end

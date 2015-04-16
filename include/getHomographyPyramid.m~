@@ -11,7 +11,8 @@ for level = 1:layerNum
     homographies = cell(rows, cols);
     for r = 1:rows
         for c = 1:cols
-            if length(nodes1{r,c}.pts) < 8 && level > 1% minimum number of points
+            
+            if length(node1{r,c}) < 8 && level > 1% minimum number of points
                 r_upper = ceil(r / 2);
                 c_upper = ceil(c / 2);
                 temp = homographyPyramid{level - 1};

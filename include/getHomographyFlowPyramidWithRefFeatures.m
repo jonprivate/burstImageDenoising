@@ -14,7 +14,7 @@ matchedPts1 = refPoints(indexPairs(:,1));
 matchedPts2 = validPoints2(indexPairs(:,2));
 [~, inlierPts1, inlierPts2] = estimateGeometricTransform(matchedPts1, matchedPts2, 'projective');
 
-homographyPyramid = getHomographyPyramid(refPyramid, inlierPts1, inlierPts2);
+homographyPyramid = getHomographyPyramid(refPyramid, matchedPts1, matchedPts2);
 
 % forth, refine homography
 homographyPyramid = refineHomographyPyramid(homographyPyramid);
