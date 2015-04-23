@@ -303,8 +303,9 @@ for level = 2 : length(refPyramid)
         end
     end
     % spatial fusion
-    refPyramid{level} = differenceImage .* levelSpatiallyFilteredImage...
-        + (1 - differenceImage) .* imresize(refPyramid{level - 1}, [size(refPyramid{level},1), size(refPyramid{level},2)], 'bilinear');
+    levelDifferenceImage = imresize(differenceImage, [size(levelSpatiallyFilteredImage, 1), size(levelSpatiallyFilteredImage, 2)]);
+    refPyramid{level} = levelDifferenceImage .* levelSpatiallyFilteredImage...
+        + (1 - levelDifferenceImage) .* imresize(refPyramid{level - 1}, [size(refPyramid{level},1), size(refPyramid{level},2)], 'bilinear');
     % multi-scale fusion
     % reuse the consistent pixel map for all levels
     levelConsistentPixelMapR = imresize(baseConsistentPixelMapR, [rows, cols], 'near');
