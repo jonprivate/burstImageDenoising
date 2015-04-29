@@ -30,5 +30,5 @@ homographyFlowPyramid{length(homographyPyramid)} = homographyFlow;
 for level = 1 : length(homographyPyramid) - 1
     imageLevel = pyramid{level};
     homographyFlow = imresize(homographyFlow, [size(imageLevel, 1), size(imageLevel, 2)], 'nearest');
-    homographyFlowPyramid{level} = homographyFlow;
+    homographyFlowPyramid{level} = homographyFlow / (2 ^ (length(homographyPyramid) - level));
 end

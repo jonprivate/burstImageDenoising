@@ -2,8 +2,10 @@ close all; clear all;
 % import burst of images
 imageNum = 10;
 imageSet = cell(1, imageNum);
+name = 'shelf2';
+ratio = 1;
 for i = 1 : imageNum
-    imageSet{i} = imread([num2str(i - 1), '.jpg']);
+    imageSet{i} = imresize(imread([num2str(i - 1), '.jpg']), ratio);
 end
 % set the reference image to be the 5th one
 ref = 5;
@@ -171,6 +173,10 @@ for r = 1 : rows
     end
 end
 
+sumBaseConsistentPixelMap = sum(baseConsistentPixelMap, 3);
+[rs, cs] = find(sumBaseConsistentPixelMap == 0);
+baseConsistentPixelMap(rs, cs, ref) = 1;
+
 % for i = 1 : size(baseConsistentPixelMap,3)
 %     baseConsistentPixelMap(:, :, i) = bwmorph(baseConsistentPixelMap(:, :, i), 'majority');
 % end
@@ -211,6 +217,7 @@ for level = 1 : length(refPyramid)
             else
                 ithImage = imageSet{i};
             end
+            ithImage = backwardTransform(ithImage, homographyFlowPyramidSet{level}{i});%%%%%ATTENTION HERE%%%%%ATTENTION HERE%%%%%ATTENTION HERE%%%%%
             levelImageSet = cat(4, levelImageSet, ithImage);
         end
     end
@@ -220,11 +227,11 @@ for level = 1 : length(refPyramid)
         levelGrayScaleImageSet(:,:,i) = rgb2gray(levelImageSet(:,:,:,i));
     end
     % get consistent image set
-    levelConsistentImageSet = getConsistentImageSet(levelGrayScaleImageSet, homographyFlowPyramidSet{level});
+    levelConsistentImageSet = levelGrayScaleImageSet; %getConsistentImageSet(levelGrayScaleImageSet, homographyFlowPyramidSet{level});
     levelConsistentPixelMap = levelConsistentPixelMapR > 0;
     levelConsistentImageSet = levelConsistentImageSet .* levelConsistentPixelMap;
     meanImage = sum(levelConsistentImageSet, 3) ./ sum(double(levelConsistentPixelMap), 3);
-    % sigma_t^2
+    % sigma_t^2%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     sigmat2MapSet{level} = sum((levelConsistentImageSet - repmat(meanImage, [1 1 size(levelConsistentImageSet, 3)])) .^ 2, 3) ./ sum(levelConsistentPixelMap, 3);
     % sigma_c^2
     sigmac2Map = sigmat2MapSet{level} - sigma2;
@@ -317,6 +324,7 @@ for level = 2 : length(refPyramid)
         else
             ithImage = imageSet{i};
         end
+        ithImage = backwardTransform(ithImage, homographyFlowPyramidSet{level}{i});%%%%%ATTENTION HERE%%%%%ATTENTION HERE%%%%%ATTENTION HERE%%%%%
         levelImageSet = cat(4, levelImageSet, ithImage);
     end
     % use consistent image to compute mean value and variance
@@ -325,13 +333,15 @@ for level = 2 : length(refPyramid)
         levelGrayScaleImageSet(:,:,i) = rgb2gray(levelImageSet(:,:,:,i));
     end
     % get consistent image set
-    levelConsistentImageSet = getConsistentImageSet(levelGrayScaleImageSet, homographyFlowPyramidSet{level});
+    levelConsistentImageSet = levelGrayScaleImageSet; %getConsistentImageSet(levelGrayScaleImageSet, homographyFlowPyramidSet{level});
     levelConsistentPixelMap = levelConsistentPixelMapR > 0;
     levelConsistentImageSet = levelConsistentImageSet .* levelConsistentPixelMap;
     omegaMap = abs(levelConsistentImageSet - repmat(rgb2gray(refPyramid{level}), [1, 1, size(levelConsistentImageSet,3)]))...
-        < repmat(3 * sqrt(sigmat2MapSet{level}), [1, 1, size(levelConsistentImageSet,3)]);
+        < repmat(3 * sqrt(sigmat2MapSet{level}), [1, 1, size(levelConsistentImageSet,3)]);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     omegaMap = sum(omegaMap .* levelConsistentPixelMap, 3);
     omegaMap = repmat(sqrt(omegaMap / length(imageSet)), [1 1 3]);
     refPyramid{level} = omegaMap .* refPyramid{level}...
         + (1 - omegaMap) .* imresize(refPyramid{level - 1}, [size(refPyramid{level},1), size(refPyramid{level},2)], 'bilinear');
 end
+
+imwrite(uint8(refPyramid{length(refPyramid)}), [name,'.png']);
